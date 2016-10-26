@@ -1,162 +1,119 @@
 import csv
 import datetime
 
-#open files and parse observations as a list of lists
-def get_obs(filename):
-    #read file
-    with open(filename, 'r') as filedata:
-        data = csv.reader(filedata)
-        #skip header
-        next(data, None)
-        #create a list containing a list of each observation
-        obs = [line for line in data]
-        #remove data from memory
-        del data
-    return obs
-
-#ad score function
-def score_ads(obs):
-    #initialize dictionary variables
-    ad_score = {}
-    display_score = {}
-    #initialize scoring variables
-    numerator = 0
-    denominator = 0
-    #initialize flag variables
-    equal_values = 0
-    not_equal = 1
-    #count is just for keeping up with iterations while script is running
-    count = 0
-    while equal_values == 0:
-        #iterate with numbers to reference more than one list object at a time
-        for i in range(len(obs)):
-            numerator += 1
-            denominator += 1
-            #establish winning ad for this display
-            if obs[i][2] == '1':
-                winner = obs[i][1]
-            else:
-                #add previous ad scores to numerator for ads that did not win
-                #in this display
-                if obs[i][1] in ad_score.keys():
-                    numerator += ad_score[obs[i][1]]
-            #calculations occur at the last display item
-            if i == len(obs)-1 or obs[i][0] != obs[i+1][0]:
-                #score the display
-                #numerator is the sum of the observations in this display plus
-                #ad scores for ads that did not win this display
-                #denominator is the sum of the observations in this display
-                new_score = numerator/denominator
-                #reset scoring variables
-                numerator = 0
-                denominator = 0
-                #check if display has been scored already,
-                #meaning that it would be at least the second iteration
-                if obs[i][0] in display_score.keys():
-                    #subtract the old display score from the ad score total
-                    ad_score[winner] -= display_score[obs[i][0]]
-                    #check if the new score matches the old score within
-                    #2 decimal places
-                    if str(round(new_score,2)) != str(round(display_score[obs[i][0]],2)):
-                        #if they do not match reset the not equal flag
-                        not_equal = 1
-                #set the display score to the new score to be compared in the
-                #next iteration
-                display_score[obs[i][0]] = new_score
-                #add display score to ad's total score
-                if winner in ad_score.keys():
-                    ad_score[winner] += new_score
-                else:
-                    ad_score[winner] = new_score
-        #if all of the new ad scores match the old ad score within 2 decimals
-        #the not_equal flag will be set to 0. not_equal is set to 0 below
-        if not_equal == 0:
-            #equal_values flag ends the while loop
-            equal_values = 1
-        #not_equal set to zero. it will be set to 1 in the next iteration if
-        #any of the new scores do not match the old scores within 2 dec.
-        not_equal = 0
-        #these prints are to keep up with the progress of the script while
-        #it is running
-        print(datetime.datetime.now().time())
-        count += 1
-        print(count)
-    #returns a list of ad ids sorted by the ad values
-    return sorted(ad_score, key = ad_score.get)
-
-#creates lines to write to submission.csv
-def create_lines(obs,score_sorted):
-    #initialize list variables
-    display = []
-    ads = []
-    ads_order = []
-    for i in range(len(obs)):
-        #append ad observations in the same display group
-        ads.append(obs[i][1])
-        #append ad scores for ads that were scored. if an ad was not scored
-        #this means that it was never clicked in the training group
-        if obs[i][1] in score_sorted:
-            ads_order.append(score_sorted.index(obs[i][1]))
-        else:
-            #append 0 for ads that were not scored
-            ads_order.append(0)
-        #checks if this is the last ad in a display group
-        if i == len(obs)-1 or obs[i][0] != obs[i+1][0]:
-            #sorts ad scores in descending order, returns a list of ad ids in
-            #the order of their ad scores. for instance, ad A has a score of
-            #3.2, and ad B has a score of 4.1...linelist = [B,A]
-            linelist = [x for (y,x) in sorted(zip(ads_order,ads), reverse = True)]
-            #formats each line as a string for output as follows
-            #display_id,ad_ids <- separated by spaces as required by Kaggle
-            line = obs[i][0] + "," + " ".join(linelist)
-            #appends these output lines to display list
-            display.append(line)
-            #resets list variables for next display group
-            ads = []
-            ads_order = []
-    #returns a list of strings in correct format ready for output to file
-    return display
-
 #filename variables
-#clicks_train contains 58,613,961 observations and takes about 30 mins to load
-#and parse into observations
-datafilein = 'clicks.csv'
-#clicks_test contains 32,225,162 observations and takes about ? mins to load
-#and parse into observations
-testfilein = 'clicks2.csv'
+#clicks_train contains 87,141,732 rows
+datafilein = 'clicks_train.csv'
+testfilein = 'clicks_test.csv'
 datafileout = 'submission.csv'
 #prints the start time for the script for runtime monitoring
 print(datetime.datetime.now().time())
-#gets obs for the training file
-obs = get_obs(datafilein)
-print("datafilein")
+
+#initialize list variables
+display = {}
+ad = {}
+count = 0
+
+with open(datafilein, 'r') as filedata:
+    data = csv.reader(filedata)
+    for i in data:
+        if count != 0:
+            try:
+                display[i[0]][1] += 1
+            except KeyError:
+                display[i[0]] = ['',1]
+            try:
+                ad[i[1]][1] += 1
+            except KeyError:
+                ad[i[1]] = [0,1,0]
+            if i[2] == '1':
+                display[i[0]][0] = i[1]
+                ad[i[1]][2] += 1
+        count += 1
+        #if count%10000000 == 0:
+        #    print(count)
+print("Cycle 1 complete")
 print(datetime.datetime.now().time())
-#remove obs from memory
-#print("deleting obs")
-#print(datetime.datetime.now().time())
-#del obs
-#print("read test file")
-#print(datetime.datetime.now().time())
-#gets obs for the test file
-obs2 = get_obs(testfilein)
-print("testfilein")
+
+count = 0
+
+with open(datafilein, 'r') as filedata:
+    data = csv.reader(filedata)
+    for i in data:
+        if count != 0:
+            prob = 1/display[i[0]][1]
+            if i[2] == '1':
+                ad[i[1]][0] += prob
+            #else:
+                #ad[i[1]][0] += prob
+        count += 1
+        #if count%10000000 == 0:
+        #    print(count)
+        #    print(datetime.datetime.now().time())
+
+print("Cycle 2 complete")
 print(datetime.datetime.now().time())
-#scores the training set
-score_sorted = score_ads(obs)
-print("scores sorted")
+
+for key in ad:
+    if ad[key][2] == 0:
+        ad[key] = -ad[key][1]
+    else:
+        ad[key] = ad[key][0] * (ad[key][2]/ad[key][1])
+
+print(str(len(ad)) + " ads scored")
+print(str(len(display)) + " displays scored")
 print(datetime.datetime.now().time())
-#gets lines to output
-display = create_lines(obs2,score_sorted)
-print("lines created")
+
+count = 0
+t_display = {}
+
+with open(testfilein, 'r') as filedata:
+    data = csv.reader(filedata)
+    for i in data:
+        if count != 0:
+            try:
+                ad[i[1]]
+            except:
+                ad[i[1]] = -1000000
+            try:
+                t_display[i[0]] += [(ad[i[1]],i[1])]
+            except KeyError:
+                t_display[i[0]] = [(ad[i[1]],i[1])]
+        count += 1
+
+print(str(len(ad)) + " ads scored")
+print(str(len(t_display)) + " test displays scored")
 print(datetime.datetime.now().time())
-#initialize header variable
+
+display_list = []
+for key in t_display:
+    t_display[key] = [x[1] for x in sorted(t_display[key],reverse=True)]
+    display_list += [(int(key),t_display[key])]
+
+display_list = sorted(display_list)
+
+print("displays sorted")
+print(datetime.datetime.now().time())
+
 headlist = ["display_id","ad_id"]
 with open(datafileout, 'w', newline = '') as datafile:
         csvfile = csv.writer(datafile)
         #writes headers to file
         csvfile.writerow(headlist)
-        for i in display:
+        for x in display_list:
             #writes each display line to file
-            datafile.write(i + "\n")
+            csvfile.writerow([x[0]," ".join(x[1])])
 #prints the script run end time
 print(datetime.datetime.now().time())
+
+#with open(datafileout, 'w', newline = '') as datafile:
+#        writer = csv.writer(datafile)
+#        for key, value in ad.items():
+            #writes each display line to file
+#            writer.writerow([key,value])
+#254136 ads scored
+
+#prints the script run end time
+#print(datetime.datetime.now().time())
+
+
