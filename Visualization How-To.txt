@@ -1,0 +1,38 @@
+VISUALIZATION HOW-TO
+Current visualization uses only data (not our algorithm) and displays the advertiser with the most clicks for each country.
+
+*Note that all data has been anonymized.  As such, we can only display IDs, not names of advertisers.  For a company with access to the non-anonymized data, this visualization could provide significantly more insight.
+
+--------Creating the Visualization in Tableau--------
+Step 1: Setting the Data Source
+	Load clicks_train.csv, events.csv, and promoted_content.csv.
+	Inner join clicks_train.csv with events.csv on "Display Id".
+	Inner join clicks_train.csv with promoted_content.csv on "Ad Id".
+	Filter "Clicked" to only be 1.
+	Create new field "Country" as first 2 characters of "Geo Location".
+Step 2: Visualization
+	Set "Country" to have Geographic Role of Country/Region.
+	Some country codes won't be automatically matched to a country.  Click the "[n] unknown" button in the lower right corner and set these manually.
+		Use the ISO 3166-1 alpha-2 standard (or a list of top-level domains)
+		Some codes do not match any country, they are "--", "A1", "A2", "AP", "EU", and "Null"
+	Create a computed field "Clicks per Advertiser" with value:
+		{INCLUDE [Advertiser Id]: SUM([Clicked])}
+	Create another computed field "Top Advertiser" with value:
+		ATTR(
+			{INCLUDE [Advertiser Id]:IF COUNT([Clicked])==MAX(
+				{EXCLUDE [Advertiser Id]:MAX(
+					{INCLUDE [Advertiser Id]:COUNT([Clicked])}
+			)})
+			THEN MIN([Advertiser Id]) END}
+		)
+	Use "Top Advertiser" to assign colors to country.
+	More fields can be added as details for more information (I add the maximum Clicks per Advertiser and the log of the total number of clicks).
+
+--------Current Issues--------
+	Some countries/region don't have any data.  Some of these make sense, but some don't.  In particular, I am concerned about the lack of data from Iran, Syria, Sudan, Myanmar, and Cuba.  This may end up being correct.
+	The calculation for top advertiser currently fails for the following countries/regions: Guinea-Bissau, Falklands, Central African Republic, Gabon, French Guiana, Estonia, Aland, Burkina Faso, Eritrea, Equatorial Guinea, Canary Islands, Timor-Leste, and several small island countries (codes TV, PF, MQ, MS, MF, AI).
+
+--------Future Plans (as of 11-13)--------
+	Create similar visualizations for other interesting fields (publisher, campaign, entity, ...).
+	US has a huge number of clicks, it might be valuable to subdivide it into states.
+	The current visualization determines top advertiser by raw number of clicks, while the most effective advertiser is most likely the one with the highest percentage of clicks.  The visualization should probably be changed to reflect that.
