@@ -332,6 +332,8 @@ rm(prom_cont, doc_dataset)
 #Joining clicks with join1 using ad_id
 clicks = clicks %>% left_join(join1)
 rm(join1)
+gc()
 
-write.csv(clicks[1:10000000,], file = "clicks_train_joined1.csv", row.names = FALSE)
-
+fwrite(clicks[130000000:135137214,], file = "clicks_test_joined5.csv", showProgress = TRUE)
+saveRDS(clicks[1:87141731,], file = "clicks_train_joined.rds")
+saveRDS(clicks[87141732:135137214,], file = "clicks_test_joined.rds")
