@@ -2,8 +2,8 @@ import csv
 import datetime
 
 #filename variables
-svfilein = 'test_submission.csv'
-testfilein = 'test_set.csv'
+svfilein = 'subm2.csv'
+testfilein = 'clicks_train_joined9.csv'
 #prints the start time for the script for runtime monitoring
 print("Start Evaluation of " + svfilein)
 print(datetime.datetime.now().time())

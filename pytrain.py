@@ -11,21 +11,21 @@ Ntrain,Ntest,Nsub =87141731,32225162,6245533
 # Any results you write to the current directory are saved as output.
 
 testing=False
-filename = 'TREE_n10_split4_leaf2_TEST'
+filename = 'rf_train12'
 print ("Get tables to combine")
-content = pd.read_csv('promoted_content.csv')
+# content = pd.read_csv('promoted_content.csv')
 print('Done combining')
 
 chunksize=50000# Out of 87141731.
-train = pd.read_csv('clicks_train.csv',iterator=True,chunksize=chunksize) #Load data
+train = pd.read_csv('clicks_train_joined*.csv',iterator=True,chunksize=chunksize) #Load data
 print( 'Training')
 for chunk in train:
-	chunk=pd.merge(chunk,content,how='left',on='ad_id')	
+	# chunk=pd.merge(chunk,content,how='left',on='ad_id')	
 	predictors=[x for x in chunk.columns if x not in ['display_id','clicked']]
 	chunk=chunk.fillna(0.0)
-	# alg = RandomForestClassifier(random_state=1, n_estimators=3, min_samples_split=4, min_samples_leaf=2, warm_start=True)
-	alg = xgboost.XGBClassifier()
-	# alg = MLPClassifier(solver='lbfgs', alpha=1e-5, hidden_layer_sizes=(15,), random_state=1)
+	alg = RandomForestClassifier(random_state=1, n_estimators=3, min_samples_split=4, min_samples_leaf=2, warm_start=True)
+	# alg = xgboost.XGBClassifier()
+	# alg = MLPClassifier(solver='sgd', alpha=1e-5, hidden_layer_sizes=(15,), random_state=1)
 	alg.fit(chunk[predictors], chunk["clicked"])#Fit the Algorithm
 	if testing:
 		break
@@ -36,7 +36,7 @@ test= pd.read_csv('clicks_test.csv',iterator=True,chunksize=chunksize) #Load dat
 predY=[]
 for chunk in test:
 	init_chunk_size=len(chunk)
-	chunk=pd.merge(chunk,content,how='left',on='ad_id')
+	# chunk=pd.merge(chunk,content,how='left',on='ad_id')
 	chunk=chunk.fillna(0.0)
 	chunk_pred=list(alg.predict_proba(chunk[predictors]).astype(float)[:,1])
 	predY += chunk_pred
@@ -47,7 +47,7 @@ print('Done Testing')
 print('Preparing for Submission')	
 test=''#We do not want the iterable version of test
 test= pd.read_csv('clicks_test.csv')#But rather the full version
-results=pd.concat(	(test,pd.DataFrame(predY)) ,axis=1,ignore_index=True)#Combine the predicted values with the ids
+results=pd.concat((test,pd.DataFrame(predY)) ,axis=1,ignore_index=True)#Combine the predicted values with the ids
 print(results.head(10))
 results.columns = ['display_id','ad_id','clicked']#Rename the columns
 #results=results[results['clicked'] > 0.0]
